@@ -3,7 +3,11 @@
 #include <semaphore.h>
 #include <thread>
 
-#define smp_mb() asm volatile("lock; addl $0, -132(%%rsp)" ::: "memory", "cc")
+#if defined(__linux__)
+    #define smp_mb() asm volatile("lock; addl $0, -132(%%rsp)" ::: "memory", "cc")
+#else
+    #define smp_mb() asm volatile("DSB ISH" ::: "memory")
+#endif
 
 int N = 1000000;
 TEST(CPU, StorageBuffer) { 
@@ -20,7 +24,7 @@ TEST(CPU, StorageBuffer) {
         for (int i = 0; i < N; i++) {
             sem_wait(&sem1);
             x = 1;
-            //smp_mb();
+            smp_mb();
             EAX = y;
             sem_post(&sem3);
         }
@@ -29,7 +33,7 @@ TEST(CPU, StorageBuffer) {
         for (int i = 0; i < N; i++) {
             sem_wait(&sem2);
             y = 1;
-            //smp_mb();
+            smp_mb();
             EBX = x;
             sem_post(&sem4);
         }
